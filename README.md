@@ -1,6 +1,9 @@
 Webhook Service
 Надежный сервис для приема webhook'ов от EPN.bz с обработкой ошибок базы данных и email уведомлениями.
-
+Установка 
+```bash
+curl -sSL https://raw.githubusercontent.com/Igor-creato/web_hook/main/install.sh | bash
+```
 Возможности
 ✅ HTTP 503 при ошибках БД - Svix автоматически повторяет отправку
 

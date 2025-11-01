@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-GITHUB_REPO="https://github.com/your-repo/epn-webhook-service.git"
+GITHUB_REPO="https://github.com/Igor-creato/web_hook.git"
 PROJECT_DIR="epn-webhook-service"
 
 echo -e "${BLUE}=== EPN.bz Webhook Service - Установка из GitHub ===${NC}"

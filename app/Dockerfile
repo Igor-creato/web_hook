@@ -16,5 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование кода
 COPY . .
 
+ENV PYTHONPATH=/app
 # Запуск
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

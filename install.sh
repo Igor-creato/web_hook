@@ -170,7 +170,7 @@ echo -e "${YELLOW}Создание Docker Compose конфигурации...${N
 if [ -f "docker-compose.yml.template" ]; then
     cp docker-compose.yml.template docker-compose.yml
 else
-    cat > docker-compose.yml << 'EOF'
+    cat > docker-compose.yml << EOF
 networks:
   proxy:
     external: true

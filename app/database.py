@@ -5,6 +5,13 @@ import pymysql
 from datetime import datetime
 import json
 
+class DatabaseConnectionError(Exception):
+    pass
+
+class DatabaseOperationError(Exception):
+    pass
+
+
 logger = logging.getLogger(__name__)
 
 # Настройки подключения к базе данных

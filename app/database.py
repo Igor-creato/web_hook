@@ -86,16 +86,14 @@ Raw Data: {json.dumps(webhook_data.get('raw_data', {}), indent=2, ensure_ascii=F
         return False
 
 def get_db_connection():
-    """Получение соединения с MariaDB с обработкой ошибок"""
+    """ВОЗВРАЩАЕМ К ОРИГИНАЛЬНОЙ РАБОЧЕЙ ВЕРСИИ - получение соединения с MariaDB"""
     try:
         if not DATABASE_URL:
             raise DatabaseConnectionError("DATABASE_URL not configured")
         
-        # Парсинг DATABASE_URL
-        # Формат: mysql://user:password@host:port/database
+        # Парсинг DATABASE_URL (оригинальная логика)
         url_without_scheme = DATABASE_URL.replace("mysql://", "")
         
-        # Разделяем на части
         if "@" not in url_without_scheme:
             raise DatabaseConnectionError("Invalid DATABASE_URL format: missing credentials")
             
@@ -106,7 +104,6 @@ def get_db_connection():
             
         username, password = credentials_part.split(":", 1)
         
-        # Парсим host:port/database
         if "/" not in host_db_part:
             raise DatabaseConnectionError("Invalid DATABASE_URL format: missing database name")
             
@@ -121,17 +118,18 @@ def get_db_connection():
         
         logger.info(f"Connecting to database: {host}:{port}/{database} as {username}")
         
+        # ОРИГИНАЛЬНОЕ ПОДКЛЮЧЕНИЕ - без изменений
         connection = pymysql.connect(
             host=host,
             port=port,
             user=username,
             password=password,
-            database=database,
+            database=database,  # Подключаемся сразу к существующей базе
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True,
-            connect_timeout=30,  # Увеличили таймаут
-            read_timeout=60      # Увеличили таймаут
+            connect_timeout=30,
+            read_timeout=60
         )
         
         # Тестируем соединение
@@ -140,7 +138,7 @@ def get_db_connection():
             result = cursor.fetchone()
             logger.info("Database connection test successful")
         
-        return connection
+        return connection  # Возвращаем ТОЛЬКО connection, как было раньше
         
     except pymysql.MySQLError as e:
         error_code = e.args[0] if e.args else 0
@@ -162,7 +160,7 @@ def get_db_connection():
         raise DatabaseConnectionError(f"Unexpected connection error: {str(e)}")
 
 async def init_db():
-    """Инициализация базы данных с обработкой ошибок"""
+    """УПРОЩЕННАЯ ВЕРСИЯ - используем существующую базу и пользователя"""
     max_retries = 5
     retry_delay = 5
     
@@ -170,6 +168,7 @@ async def init_db():
         try:
             logger.info(f"Database initialization attempt {attempt + 1}/{max_retries}")
             
+            # ИСПОЛЬЗУЕМ ОРИГИНАЛЬНУЮ ЛОГИКУ
             connection = get_db_connection()
             logger.info("Database connection established for initialization")
             
@@ -179,7 +178,7 @@ async def init_db():
                 current_db = cursor.fetchone()
                 logger.info(f"Current database: {current_db}")
                 
-                # Создание таблицы для webhook событий EPN.bz
+                # ОРИГИНАЛЬНАЯ СХЕМА ТАБЛИЦЫ - возвращаем как было
                 create_table_sql = f"""
                 CREATE TABLE IF NOT EXISTS `{TABLE_NAME}` (
                     `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -219,7 +218,17 @@ async def init_db():
                     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Время создания',
                     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Время обновления',
                     
-                    PRIMARY KEY (`id`)
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_partner_uniq_status` (`partner`, `uniq_id`, `order_status`),
+                    KEY `idx_partner_status` (`partner`, `order_status`),
+                    KEY `idx_created_at` (`created_at`),
+                    KEY `idx_uniq_id` (`uniq_id`),
+                    KEY `idx_click_id` (`click_id`),
+                    KEY `idx_order_number` (`order_number`),
+                    KEY `idx_partner_created` (`partner`, `created_at`),
+                    KEY `idx_revenue_commission` (`revenue`, `commission_fee`),
+                    KEY `idx_event_type` (`event_type`),
+                    KEY `idx_offer_id` (`offer_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
                   COMMENT='Таблица для хранения событий от EPN.bz с правильной уникальностью'
                 """
@@ -234,42 +243,6 @@ async def init_db():
                 
                 if table_exists:
                     logger.info(f"✅ Table {TABLE_NAME} confirmed to exist")
-                    
-                    # Добавляем уникальный индекс отдельно для совместимости
-                    try:
-                        cursor.execute(f"""
-                        ALTER TABLE `{TABLE_NAME}` 
-                        ADD UNIQUE KEY `unique_partner_uniq_status` (`partner`, `uniq_id`, `order_status`)
-                        """)
-                        logger.info("✅ Unique index added successfully")
-                    except pymysql.MySQLError as e:
-                        if "Duplicate key name" in str(e):
-                            logger.info("Unique index already exists, skipping")
-                        else:
-                            logger.warning(f"Could not add unique index: {e}")
-                    
-                    # Добавляем другие индексы
-                    indexes = [
-                        ("idx_partner_status", "(`partner`, `order_status`)"),
-                        ("idx_created_at", "(`created_at`)"),
-                        ("idx_uniq_id", "(`uniq_id`)"),
-                        ("idx_click_id", "(`click_id`)"),
-                        ("idx_order_number", "(`order_number`)"),
-                        ("idx_partner_created", "(`partner`, `created_at`)"),
-                        ("idx_revenue_commission", "(`revenue`, `commission_fee`)"),
-                        ("idx_event_type", "(`event_type`)"),
-                        ("idx_offer_id", "(`offer_id`)")
-                    ]
-                    
-                    for index_name, index_columns in indexes:
-                        try:
-                            cursor.execute(f"ALTER TABLE `{TABLE_NAME}` ADD KEY `{index_name}` {index_columns}")
-                            logger.info(f"✅ Index {index_name} added")
-                        except pymysql.MySQLError as e:
-                            if "Duplicate key name" in str(e):
-                                logger.info(f"Index {index_name} already exists, skipping")
-                            else:
-                                logger.warning(f"Could not add index {index_name}: {e}")
                     
                     # Показываем структуру таблицы для подтверждения
                     cursor.execute(f"DESCRIBE `{TABLE_NAME}`")
@@ -309,9 +282,9 @@ async def init_db():
                 raise
 
 async def save_webhook_event(data: Dict[str, Any]) -> bool:
-    """Сохранение события webhook в базу данных с обработкой ошибок и email уведомлениями"""
+    """ОРИГИНАЛЬНАЯ ВЕРСИЯ - сохранение события webhook в базу данных"""
     try:
-        connection = get_db_connection()
+        connection = get_db_connection()  # Получаем только connection, как раньше
         
         with connection.cursor() as cursor:
             # Подготовка данных для вставки

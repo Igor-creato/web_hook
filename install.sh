@@ -8,7 +8,6 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 GITHUB_REPO="https://github.com/Igor-creato/web_hook.git"
-PROJECT_DIR="epn-webhook-service"
 
 echo -e "${BLUE}=== EPN.bz Webhook Service - Установка из GitHub ===${NC}"
 
@@ -63,46 +62,40 @@ git clone $GITHUB_REPO .
 
 if [ ! -f "install.sh" ]; then
     echo -e "${RED}Ошибка: Не удалось клонировать репозиторий или файл install.sh не найден${NC}"
-    echo -e "${YELLOW}Создаем структуру проекта вручную...${NC}"
-    
-    # Создаем структуру вручную если клонирование не удалось
-    mkdir -p app/partners docs
-    
-    # Минимальный файл для проверки
-    echo "# Project cloned manually" > project_info.txt
+    exit 1
 fi
 
 # Запрос параметров конфигурации
 echo -e "${BLUE}Настройка параметров:${NC}"
 
-read -p "Введите домен для веб-интерфейса (например svix.yourdomain.com): " DOMAIN
+read -p "Введите домен для веб-интерфейса (например svix.yourdomain.com): " DOMAIN < /dev/tty
 if [ -z "$DOMAIN" ]; then
     echo -e "${RED}Домен обязателен!${NC}"
     exit 1
 fi
 
-read -p "Введите название таблицы для webhook данных [webhook_events]: " TABLE_NAME
+read -p "Введите название таблицы для webhook данных [webhook_events]: " TABLE_NAME < /dev/tty
 TABLE_NAME=${TABLE_NAME:-webhook_events}
 
-read -p "Введите логин MariaDB: " DB_USER
+read -p "Введите логин MariaDB: " DB_USER < /dev/tty
 if [ -z "$DB_USER" ]; then
     echo -e "${RED}Логин обязателен!${NC}"
     exit 1
 fi
 
-read -s -p "Введите пароль MariaDB: " DB_PASSWORD
+read -s -p "Введите пароль MariaDB: " DB_PASSWORD < /dev/tty
 echo
 if [ -z "$DB_PASSWORD" ]; then
     echo -e "${RED}Пароль обязателен!${NC}"
     exit 1
 fi
 
-read -p "Введите название базы данных [wordpress]: " DB_NAME
+read -p "Введите название базы данных [wordpress]: " DB_NAME < /dev/tty
 DB_NAME=${DB_NAME:-wordpress}
 
 echo -e "${BLUE}Настройка email уведомлений об ошибках:${NC}"
 
-read -p "Введите email для уведомлений об ошибках (можно пропустить): " ALERT_EMAIL
+read -p "Введите email для уведомлений об ошибках (можно пропустить): " ALERT_EMAIL < /dev/tty
 if [ -z "$ALERT_EMAIL" ]; then
     echo -e "${YELLOW}Email уведомления отключены${NC}"
     SMTP_USERNAME=""
@@ -111,16 +104,16 @@ if [ -z "$ALERT_EMAIL" ]; then
     SMTP_PORT="587"
     FROM_EMAIL=""
 else
-    read -p "Введите SMTP сервер [smtp.gmail.com]: " SMTP_SERVER
+    read -p "Введите SMTP сервер [smtp.gmail.com]: " SMTP_SERVER < /dev/tty
     SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
     
-    read -p "Введите SMTP порт [587]: " SMTP_PORT
+    read -p "Введите SMTP порт [587]: " SMTP_PORT < /dev/tty
     SMTP_PORT=${SMTP_PORT:-587}
     
-    read -p "Введите email для отправки уведомлений [${ALERT_EMAIL}]: " SMTP_USERNAME
+    read -p "Введите email для отправки уведомлений [${ALERT_EMAIL}]: " SMTP_USERNAME < /dev/tty
     SMTP_USERNAME=${SMTP_USERNAME:-$ALERT_EMAIL}
     
-    read -s -p "Введите пароль для email (для Gmail используйте App Password): " SMTP_PASSWORD
+    read -s -p "Введите пароль для email (для Gmail используйте App Password): " SMTP_PASSWORD < /dev/tty
     echo
     if [ -z "$SMTP_PASSWORD" ]; then
         echo -e "${YELLOW}Пароль не указан - email уведомления отключены${NC}"
@@ -128,7 +121,7 @@ else
         ALERT_EMAIL=""
     fi
     
-    read -p "Введите From email [${SMTP_USERNAME}]: " FROM_EMAIL
+    read -p "Введите From email [${SMTP_USERNAME}]: " FROM_EMAIL < /dev/tty
     FROM_EMAIL=${FROM_EMAIL:-$SMTP_USERNAME}
 fi
 
@@ -176,11 +169,8 @@ EOF
 echo -e "${YELLOW}Создание Docker Compose конфигурации...${NC}"
 if [ -f "docker-compose.yml.template" ]; then
     cp docker-compose.yml.template docker-compose.yml
-    # Замена переменных в шаблоне если нужно
 else
-    # Создаем docker-compose.yml если шаблон не найден
     cat > docker-compose.yml << 'EOF'
-
 networks:
   proxy:
     external: true
@@ -190,7 +180,6 @@ networks:
     driver: bridge
 
 services:
-  # PostgreSQL для Svix
   svix_postgres:
     image: postgres:13-alpine
     environment:
@@ -203,14 +192,12 @@ services:
       - svix-internal
     restart: unless-stopped
 
-  # Redis для Svix
   svix_redis:
     image: redis:7-alpine
     networks:
       - svix-internal
     restart: unless-stopped
 
-  # Svix Server
   svix_server:
     image: svix/svix-server:latest
     environment:
@@ -233,7 +220,6 @@ services:
       - "traefik.docker.network=proxy"
     restart: unless-stopped
 
-  # FastAPI Webhook Receiver
   webhook_receiver:
     build: ./app
     environment:
@@ -276,7 +262,6 @@ docker network create wp-backend 2>/dev/null || echo "Сеть wp-backend уже
 echo -e "${YELLOW}Проверка файлов приложения...${NC}"
 if [ ! -f "app/main.py" ]; then
     echo -e "${YELLOW}Файлы приложения отсутствуют. Создаем базовую структуру...${NC}"
-    # Здесь можно добавить создание базовых файлов если они отсутствуют
 fi
 
 # Сборка и запуск

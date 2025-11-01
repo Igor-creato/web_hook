@@ -25,15 +25,16 @@ def get_db_connection():
             raise ValueError("DATABASE_URL not configured")
         
         parts = DATABASE_URL.replace("mysql://", "").split("/")
-        db_name = parts if len(parts) > 1 else "wordpress"
-        auth_host = parts.split("@")
-        host_port = auth_host.split(":")
-        host = host_port
-        port = int(host_port) if len(host_port) > 1 else 3306
-        user_pass = auth_host.split(":")
-        user = user_pass
-        password = user_pass
-        
+        db_name = parts[1] if len(parts) > 1 else "wordpress"
+        auth_host = parts[0].split("@")
+        user_pass = auth_host[0].split(":")
+        host_port = auth_host[1].split(":")
+
+        user = user_pass[0]
+        password = user_pass[1]
+        host = host_port[0]
+        port = int(host_port[1]) if len(host_port) > 1 else 3306
+
         connection = pymysql.connect(
             host=host,
             port=port,
@@ -44,11 +45,11 @@ def get_db_connection():
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True
         )
-        
         return connection
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
         return None
+
 
 async def init_db():
     """Инициализация базы данных с правильной структурой для EPN.bz"""

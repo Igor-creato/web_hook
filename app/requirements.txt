@@ -8,3 +8,5 @@ pydantic==2.5.0
 httpx==0.25.2
 python-dotenv==1.0.0
 alembic==1.12.1
+aiomysql==0.2.0
+redis==5.0.1
